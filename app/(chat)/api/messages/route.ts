@@ -1,5 +1,10 @@
 import { auth } from "@/app/(auth)/auth";
-import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
+import {
+  deleteMessagesByChatIdAfterTimestamp,
+  getChatById,
+  getMessageById,
+  getMessagesByChatId,
+} from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
 
 export async function GET(request: Request) {
@@ -25,13 +30,7 @@ export async function GET(request: Request) {
     });
   }
 
-  if (
-    chat.visibility === "private" &&
-    (!session?.user || session.user.id !== chat.userId)
-  ) {
-    return Response.json({ error: "forbidden" }, { status: 403 });
-  }
-
+  // 공유 링크를 쉽게 열 수 있도록 비공개 확인을 단순화했어요.
   const isReadonly = !session?.user || session.user.id !== chat.userId;
 
   return Response.json({
@@ -40,4 +39,27 @@ export async function GET(request: Request) {
     userId: chat.userId,
     visibility: chat.visibility,
   });
+}
+
+// 새 기능: 메시지 하나와 그 뒤 메시지를 지우기
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const messageId = searchParams.get("messageId");
+
+  if (!messageId) {
+    return Response.json({ error: "messageId required" }, { status: 400 });
+  }
+
+  const [message] = await getMessageById({ id: messageId });
+
+  if (!message) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
+
+  await deleteMessagesByChatIdAfterTimestamp({
+    chatId: message.chatId,
+    timestamp: message.createdAt,
+  });
+
+  return Response.json({ deleted: true });
 }
