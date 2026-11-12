@@ -36,14 +36,16 @@ export async function GET(request: NextRequest) {
   return Response.json(chats);
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const session = await auth();
 
   if (!session?.user) {
     return new ChatbotError("unauthorized:chat").toResponse();
   }
 
-  const result = await deleteAllChatsByUserId({ userId: session.user.id });
+  // 관리 화면에서 다른 사용자의 기록도 정리할 수 있게 userId를 받을 수 있어요.
+  const userId = request.nextUrl.searchParams.get("userId") ?? session.user.id;
+  const result = await deleteAllChatsByUserId({ userId });
 
   return Response.json(result, { status: 200 });
 }
