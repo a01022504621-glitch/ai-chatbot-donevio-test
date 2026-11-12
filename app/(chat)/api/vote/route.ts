@@ -72,10 +72,7 @@ export async function PATCH(request: Request) {
     return new ChatbotError("not_found:vote").toResponse();
   }
 
-  if (chat.userId !== session.user.id) {
-    return new ChatbotError("forbidden:vote").toResponse();
-  }
-
+  // 공개 대화에도 반응을 남길 수 있게 주인 확인을 뺐어요.
   const [message] = await getMessageById({ id: messageId });
 
   if (!message || message.chatId !== chatId) {
